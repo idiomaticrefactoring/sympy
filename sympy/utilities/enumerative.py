@@ -104,8 +104,10 @@ class PartComponent:
     __slots__ = ('c', 'u', 'v')
 
     def __init__(self):
-        self.c , self.u , self.v  = 0, 0, 0   # Component number
+        self.c = 0   # Component number
+        self.u = 0   # The as yet unpartitioned amount in component c
                      # *before* it is allocated by this triple
+        self.v = 0   # Amount of c component in the current part
                      # (v<=u).  An invariant of the representation is
                      # that the next higher triple for this component
                      # (if there is one) will have a value of u-v in
@@ -209,8 +211,9 @@ def multiset_partitions_taocp(multiplicities):
 
     # Important variables.
     # m is the number of components, i.e., number of distinct elements
-    m , n  = len(multiplicities), sum(multiplicities)
+    m = len(multiplicities)
     # n is the cardinality, total number of elements whether or not distinct
+    n = sum(multiplicities)
 
     # The main data structure, f segments pstack into parts.  See
     # list_visitor() for example code indicating how this internal
@@ -219,38 +222,51 @@ def multiset_partitions_taocp(multiplicities):
     # Note: allocation of space for stack is conservative.  Knuth's
     # exercise 7.2.1.5.68 gives some indication of how to tighten this
     # bound, but this is not implemented.
-    pstack , f  = [PartComponent() for i in range(n * m + 1)], [0] * (n + 1)
+    pstack = [PartComponent() for i in range(n * m + 1)]
+    f = [0] * (n + 1)
 
     # Step M1 in Knuth (Initialize)
     # Initial state - entire multiset in one part.
     for j in range(m):
         ps = pstack[j]
-        ps.c , ps.u , ps.v  = j, multiplicities[j], multiplicities[j]
+        ps.c = j
+        ps.u = multiplicities[j]
+        ps.v = multiplicities[j]
 
     # Other variables
-    f[0] , a , lpart , f[1] , b  = 0, 0, 0, m, m
+    f[0] = 0
+    a = 0
+    lpart = 0
+    f[1] = m
+    b = m  # in general, current stack frame is from a to b - 1
 
     while True:
         while True:
             # Step M2 (Subtract v from u)
-            j , k , x  = a, b, False
+            j = a
+            k = b
+            x = False
             while j < b:
                 pstack[k].u = pstack[j].u - pstack[j].v
-                if not pstack[k].u:
+                if pstack[k].u == 0:
                     x = True
                 elif not x:
                     pstack[k].c = pstack[j].c
                     pstack[k].v = min(pstack[j].v, pstack[k].u)
-                    x , k  = pstack[k].u < pstack[j].v, k + 1
+                    x = pstack[k].u < pstack[j].v
+                    k = k + 1
                 else:  # x is True
-                    pstack[k].c , pstack[k].v  = pstack[j].c, pstack[k].u
+                    pstack[k].c = pstack[j].c
+                    pstack[k].v = pstack[k].u
                     k = k + 1
                 j = j + 1
                 # Note: x is True iff v has changed
 
             # Step M3 (Push if nonzero.)
             if k > b:
-                a , b , lpart  = b, k, lpart + 1
+                a = b
+                b = k
+                lpart = lpart + 1
                 f[lpart + 1] = b
                 # Return to M2
             else:
@@ -263,14 +279,15 @@ def multiset_partitions_taocp(multiplicities):
         # M5 (Decrease v)
         while True:
             j = b-1
-            while (not pstack[j].v):
+            while (pstack[j].v == 0):
                 j = j - 1
             if j == a and pstack[j].v == 1:
                 # M6 (Backtrack)
-                if not lpart:
+                if lpart == 0:
                     return
                 lpart = lpart - 1
-                b , a  = a, f[lpart]
+                b = a
+                a = f[lpart]
                 # Return to M5
             else:
                 pstack[j].v = pstack[j].v - 1
@@ -395,11 +412,19 @@ class MultisetPartitionTraverser():
     """
 
     def __init__(self):
-        self.debug , self.k1 , self.k2 , self.p1 , self.pstack , self.f , self.lpart , self.discarded , self.dp_stack  = False, 0, 0, 0, None, None, 0, 0, []
+        self.debug = False
         # TRACING variables.  These are useful for gathering
         # statistics on the algorithm itself, but have no particular
         # benefit to a user of the code.
+        self.k1 = 0
+        self.k2 = 0
+        self.p1 = 0
+        self.pstack = None
+        self.f = None
+        self.lpart = 0
+        self.discarded = 0
         # dp_stack is list of lists of (part_key, start_count) pairs
+        self.dp_stack = []
 
         # dp_map is map part_key-> count, where count represents the
         # number of multiset which are descendants of a part with this
@@ -434,19 +459,26 @@ class MultisetPartitionTraverser():
         This is called from the enumeration/counting routines, so
         there is no need to call it separately."""
 
-        num_components , cardinality  = len(multiplicities), sum(multiplicities)
+        num_components = len(multiplicities)
         # cardinality is the total number of elements, whether or not distinct
+        cardinality = sum(multiplicities)
 
         # pstack is the partition stack, which is segmented by
         # f into parts.
-        self.pstack , self.f  = [PartComponent() for i in range(num_components * cardinality + 1)], [0] * (cardinality + 1)
+        self.pstack = [PartComponent() for i in
+                       range(num_components * cardinality + 1)]
+        self.f = [0] * (cardinality + 1)
 
         # Initial state - entire multiset in one part.
         for j in range(num_components):
             ps = self.pstack[j]
-            ps.c , ps.u , ps.v  = j, multiplicities[j], multiplicities[j]
+            ps.c = j
+            ps.u = multiplicities[j]
+            ps.v = multiplicities[j]
 
-        self.f[0] , self.f[1] , self.lpart  = 0, num_components, 0
+        self.f[0] = 0
+        self.f[1] = num_components
+        self.lpart = 0
 
     # The decrement_part() method corresponds to step M5 in Knuth's
     # algorithm.  This is the base version for enum_all().  Modified
@@ -471,7 +503,7 @@ class MultisetPartitionTraverser():
         """
         plen = len(part)
         for j in range(plen - 1, -1, -1):
-            if not j and part[j].v > 1 or j > 0 < part[j].v:
+            if j == 0 and part[j].v > 1 or j > 0 and part[j].v > 0:
                 # found val to decrement
                 part[j].v -= 1
                 # Reset trailing parts back to maximum
@@ -537,11 +569,11 @@ class MultisetPartitionTraverser():
         plen = len(part)
         for j in range(plen - 1, -1, -1):
             # Knuth's mod, (answer to problem 7.2.1.5.69)
-            if not j and (part[0].v - 1)*(ub - self.lpart) < part[0].u:
+            if j == 0 and (part[0].v - 1)*(ub - self.lpart) < part[0].u:
                 self.k1 += 1
                 return False
 
-            if not j and part[j].v > 1 or j > 0 < part[j].v:
+            if j == 0 and part[j].v > 1 or j > 0 and part[j].v > 0:
                 # found val to decrement
                 part[j].v -= 1
                 # Reset trailing parts back to maximum
@@ -553,7 +585,7 @@ class MultisetPartitionTraverser():
                 # that turns out to be surprisingly common - exactly
                 # enough room to expand the leading component, but no
                 # room for the second component, which has v=0.
-                if (plen > 1 and not part[1].v and
+                if (plen > 1 and part[1].v == 0 and
                     (part[0].u - part[0].v) ==
                         ((ub - self.lpart - 1) * part[0].v)):
                     self.k2 += 1
@@ -605,7 +637,8 @@ class MultisetPartitionTraverser():
         min_unalloc = lb - self.lpart
         if min_unalloc <= 0:
             return True
-        total_mult , total_alloc  = sum((pc.u for pc in part)), sum((pc.v for pc in part))
+        total_mult = sum(pc.u for pc in part)
+        total_alloc = sum(pc.v for pc in part)
         if total_mult <= min_unalloc:
             return False
 
@@ -614,7 +647,7 @@ class MultisetPartitionTraverser():
             return True
 
         for i in range(len(part) - 1, -1, -1):
-            if not i:
+            if i == 0:
                 if part[0].v > deficit:
                     part[0].v -= deficit
                     return True
@@ -680,14 +713,16 @@ class MultisetPartitionTraverser():
         part has no unallocated multiplicity.
 
         """
-        j , k  = self.f[self.lpart], self.f[self.lpart + 1]  # base of current top part
-        base , changed  = k, False  # save for later comparison
+        j = self.f[self.lpart]  # base of current top part
+        k = self.f[self.lpart + 1]  # ub of current; potential base of next
+        base = k  # save for later comparison
 
+        changed = False  # Set to true when the new part (so far) is
                          # strictly less than (as opposed to less than
                          # or equal) to the old.
         for j in range(self.f[self.lpart], self.f[self.lpart + 1]):
             self.pstack[k].u = self.pstack[j].u - self.pstack[j].v
-            if not self.pstack[k].u:
+            if self.pstack[k].u == 0:
                 changed = True
             else:
                 self.pstack[k].c = self.pstack[j].c
@@ -695,7 +730,8 @@ class MultisetPartitionTraverser():
                     self.pstack[k].v = self.pstack[k].u
                 else:  # Still maintaining ordering constraint
                     if self.pstack[k].u < self.pstack[j].v:
-                        self.pstack[k].v , changed  = self.pstack[k].u, True
+                        self.pstack[k].v = self.pstack[k].u
+                        changed = True
                     else:
                         self.pstack[k].v = self.pstack[j].v
                 k = k + 1
@@ -757,7 +793,7 @@ class MultisetPartitionTraverser():
             # M5 (Decrease v)
             while not self.decrement_part(self.top_part()):
                 # M6 (Backtrack)
-                if not self.lpart:
+                if self.lpart == 0:
                     return
                 self.lpart -= 1
 
@@ -822,7 +858,7 @@ class MultisetPartitionTraverser():
             while not self.decrement_part_small(self.top_part(), ub):
                 self.db_trace("Failed decrement, going to backtrack")
                 # M6 (Backtrack)
-                if not self.lpart:
+                if self.lpart == 0:
                     return
                 self.lpart -= 1
                 self.db_trace("Backtracked to")
@@ -869,20 +905,23 @@ class MultisetPartitionTraverser():
         self._initialize_enumeration(multiplicities)
         self.decrement_part_large(self.top_part(), 0, lb)
         while True:
+            good_partition = True
             while self.spread_part_multiplicity():
                 if not self.decrement_part_large(self.top_part(), 0, lb):
+                    # Failure here should be rare/impossible
                     self.discarded += 1
+                    good_partition = False
                     break
-            else:
-                state = [self.f, self.lpart, self.pstack]
-                yield state
 
             # M4  Visit a partition
+            if good_partition:
+                state = [self.f, self.lpart, self.pstack]
+                yield state
 
             # M5 (Decrease v)
             while not self.decrement_part_large(self.top_part(), 1, lb):
                 # M6 (Backtrack)
-                if not self.lpart:
+                if self.lpart == 0:
                     return
                 self.lpart -= 1
 
@@ -917,28 +956,32 @@ class MultisetPartitionTraverser():
         self._initialize_enumeration(multiplicities)
         self.decrement_part_large(self.top_part(), 0, lb)
         while True:
+            good_partition = True
             while self.spread_part_multiplicity():
-                self.db_trace('spread 1')
+                self.db_trace("spread 1")
                 if not self.decrement_part_large(self.top_part(), 0, lb):
-                    self.db_trace('  Discarding (large cons)')
+                    # Failure here - possible in range case?
+                    self.db_trace("  Discarding (large cons)")
                     self.discarded += 1
+                    good_partition = False
                     break
                 elif self.lpart >= ub:
                     self.discarded += 1
-                    self.db_trace('  Discarding small cons')
+                    good_partition = False
+                    self.db_trace("  Discarding small cons")
                     self.lpart = ub - 2
                     break
-            else:
-                state = [self.f, self.lpart, self.pstack]
-                yield state
 
             # M4  Visit a partition
+            if good_partition:
+                state = [self.f, self.lpart, self.pstack]
+                yield state
 
             # M5 (Decrease v)
             while not self.decrement_part_range(self.top_part(), lb, ub):
                 self.db_trace("Failed decrement, going to backtrack")
                 # M6 (Backtrack)
-                if not self.lpart:
+                if self.lpart == 0:
                     return
                 self.lpart -= 1
                 self.db_trace("Backtracked to")
@@ -971,7 +1014,7 @@ class MultisetPartitionTraverser():
             # M5 (Decrease v)
             while not self.decrement_part(self.top_part()):
                 # M6 (Backtrack)
-                if not self.lpart:
+                if self.lpart == 0:
                     return self.pcount
                 self.lpart -= 1
 
@@ -1046,9 +1089,10 @@ class MultisetPartitionTraverser():
         count, and combining the histograms.
         """
         # number of partitions so far in the enumeration
-        self.pcount , self.dp_stack  = 0, []
+        self.pcount = 0
 
         # dp_stack is list of lists of (part_key, start_count) pairs
+        self.dp_stack = []
 
         self._initialize_enumeration(multiplicities)
         pkey = part_key(self.top_part())
@@ -1078,7 +1122,7 @@ class MultisetPartitionTraverser():
                 # M6 (Backtrack)
                 for key, oldcount in self.dp_stack.pop():
                     self.dp_map[key] = self.pcount - oldcount
-                if not self.lpart:
+                if self.lpart == 0:
                     return self.pcount
                 self.lpart -= 1
 
