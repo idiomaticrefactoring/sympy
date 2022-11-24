@@ -33,8 +33,7 @@ def test_size_assumed_shape():
     if not has_fortran():
         skip("No fortran compiler found.")
     a = Symbol('a', real=True)
-    body = [Return((sum_(a**2)/size(a))**.5)]
-    arr = array(a, dim=[':'], intent='in')
+    body , arr  = [Return((sum_(a ** 2) / size(a)) ** 0.5)], array(a, dim=[':'], intent='in')
     fd = FunctionDefinition(real, 'rms', [arr], body)
     render_as_module([fd], 'mod_rms')
 
@@ -61,8 +60,7 @@ def test_ImpliedDoLoop():
 
     a, i = symbols('a i', integer=True)
     idl = ImpliedDoLoop(i**3, i, -3, 3, 2)
-    ac = ArrayConstructor([-28, idl, 28])
-    a = array(a, dim=[':'], attrs=[allocatable])
+    ac , a  = ArrayConstructor([-28, idl, 28]), array(a, dim=[':'], attrs=[allocatable])
     prog = Program('idlprog', [
         a.as_Declaration(),
         Assignment(a, ac),
@@ -80,8 +78,7 @@ def test_ImpliedDoLoop():
 def test_Program():
     x = Symbol('x', real=True)
     vx = Variable.deduced(x, 42)
-    decl = Declaration(vx)
-    prnt = Print([x, x+1])
+    decl , prnt  = Declaration(vx), Print([x, x + 1])
     prog = Program('foo', [decl, prnt])
     if not has_fortran():
         skip("No fortran compiler found.")
@@ -98,8 +95,7 @@ def test_Module():
     x = Symbol('x', real=True)
     v_x = Variable.deduced(x)
     sq = FunctionDefinition(real, 'sqr', [v_x], [Return(x**2)])
-    mod_sq = Module('mod_sq', [], [sq])
-    sq_call = FunctionCall('sqr', [42.])
+    mod_sq , sq_call  = Module('mod_sq', [], [sq]), FunctionCall('sqr', [42.0])
     prg_sq = Program('foobar', [
         use('mod_sq', only=['sqr']),
         Print(['"Square of 42 = "', sq_call])
@@ -122,21 +118,12 @@ def test_Subroutine():
     # http://www.fortran90.org/src/best-practices.html#arrays
     r = Symbol('r', real=True)
     i = Symbol('i', integer=True)
-    v_r = Variable.deduced(r, attrs=(dimension(assumed_extent), intent_out))
-    v_i = Variable.deduced(i)
-    v_n = Variable('n', integer)
+    v_r , v_i , v_n  = Variable.deduced(r, attrs=(dimension(assumed_extent), intent_out)), Variable.deduced(i), Variable('n', integer)
     do_loop = Do([
         Assignment(Element(r, [i]), literal_dp(1)/i**2)
     ], i, 1, v_n)
-    sub = Subroutine("f", [v_r], [
-        Declaration(v_n),
-        Declaration(v_i),
-        Assignment(v_n, size(r)),
-        do_loop
-    ])
-    x = Symbol('x', real=True)
-    v_x3 = Variable.deduced(x, attrs=[dimension(3)])
-    mod = Module('mymod', definitions=[sub])
+    sub , x  = Subroutine('f', [v_r], [Declaration(v_n), Declaration(v_i), Assignment(v_n, size(r)), do_loop]), Symbol('x', real=True)
+    v_x3 , mod  = Variable.deduced(x, attrs=[dimension(3)]), Module('mymod', definitions=[sub])
     prog = Program('foo', [
         use(mod, only=[sub]),
         Declaration(v_x3),
@@ -193,10 +180,8 @@ def test_bind_C():
     if not np:
         skip("NumPy not found.")
 
-    a = Symbol('a', real=True)
-    s = Symbol('s', integer=True)
-    body = [Return((sum_(a**2)/s)**.5)]
-    arr = array(a, dim=[s], intent='in')
+    a , s  = Symbol('a', real=True), Symbol('s', integer=True)
+    body , arr  = [Return((sum_(a ** 2) / s) ** 0.5)], array(a, dim=[s], intent='in')
     fd = FunctionDefinition(real, 'rms', [arr, s], body, attrs=[bind_C('rms')])
     f_mod = render_as_module([fd], 'mod_rms')
 

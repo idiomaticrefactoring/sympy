@@ -26,8 +26,7 @@ def _mk_func1():
 
 
 def _render_compile_import(funcdef, build_dir):
-    code_str = render_as_source_file(funcdef, settings=dict(contract=False))
-    declar = ccode(FunctionPrototype.from_FunctionDefinition(funcdef))
+    code_str , declar  = render_as_source_file(funcdef, settings=dict(contract=False)), ccode(FunctionPrototype.from_FunctionDefinition(funcdef))
     return compile_link_import_strings([
         ('our_test_func.c', code_str),
         ('_our_test_func.pyx', ("#cython: language_level={}\n".format("3") +

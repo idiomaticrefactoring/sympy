@@ -74,7 +74,7 @@ def test_expm1_opt():
 
     expr1 = exp(x) - 1
     opt1 = optimize(expr1, [expm1_opt])
-    assert expm1(x) - opt1 == 0
+    assert not expm1(x) - opt1
     assert opt1.rewrite(exp) == expr1
 
     expr2 = 3*exp(x) - 3
@@ -113,24 +113,20 @@ def test_expm1_opt():
     expr7 = (2*exp(x) - 1)/(1 - exp(y)) - 1/(1-exp(y))
     opt7 = optimize(expr7, [expm1_opt])
     assert -2*expm1(x)/expm1(y) == opt7
-    assert (opt7.rewrite(exp) - expr7).factor() == 0
+    assert not (opt7.rewrite(exp) - expr7).factor()
 
     expr8 = (1+exp(x))**2 - 4
-    opt8 = optimize(expr8, [expm1_opt])
-    tgt8a = (exp(x) + 3)*expm1(x)
-    tgt8b = 2*expm1(x) + expm1(2*x)
+    opt8 , tgt8a , tgt8b  = optimize(expr8, [expm1_opt]), (exp(x) + 3) * expm1(x), 2 * expm1(x) + expm1(2 * x)
     # Both tgt8a & tgt8b seem to give full precision (~16 digits for double)
     # for x=1e-7 (compare with expr8 which only achieves ~8 significant digits).
     # If we can show that either tgt8a or tgt8b is preferable, we can
     # change this test to ensure the preferable version is returned.
-    assert (tgt8a - tgt8b).rewrite(exp).factor() == 0
+    assert not (tgt8a - tgt8b).rewrite(exp).factor()
     assert opt8 in (tgt8a, tgt8b)
-    assert (opt8.rewrite(exp) - expr8).factor() == 0
+    assert not (opt8.rewrite(exp) - expr8).factor()
 
     expr9 = sin(expr8)
-    opt9 = optimize(expr9, [expm1_opt])
-    tgt9a = sin(tgt8a)
-    tgt9b = sin(tgt8b)
+    opt9 , tgt9a , tgt9b  = optimize(expr9, [expm1_opt]), sin(tgt8a), sin(tgt8b)
     assert opt9 in (tgt9a, tgt9b)
     assert (opt9.rewrite(exp) - expr9.rewrite(exp)).factor().is_zero
 
@@ -147,7 +143,7 @@ def test_cosm1_opt():
 
     expr1 = cos(x) - 1
     opt1 = optimize(expr1, [cosm1_opt])
-    assert cosm1(x) - opt1 == 0
+    assert not cosm1(x) - opt1
     assert opt1.rewrite(cos) == expr1
 
     expr2 = 3*cos(x) - 3
@@ -198,17 +194,17 @@ def test_log1p_opt():
     x = Symbol('x')
     expr1 = log(x + 1)
     opt1 = optimize(expr1, [log1p_opt])
-    assert log1p(x) - opt1 == 0
+    assert not log1p(x) - opt1
     assert opt1.rewrite(log) == expr1
 
     expr2 = log(3*x + 3)
     opt2 = optimize(expr2, [log1p_opt])
     assert log1p(x) + log(3) == opt2
-    assert (opt2.rewrite(log) - expr2).simplify() == 0
+    assert not (opt2.rewrite(log) - expr2).simplify()
 
     expr3 = log(2*x + 1)
     opt3 = optimize(expr3, [log1p_opt])
-    assert log1p(2*x) - opt3 == 0
+    assert not log1p(2 * x) - opt3
     assert opt3.rewrite(log) == expr3
 
     expr4 = log(x+3)
@@ -232,19 +228,19 @@ def test_optims_c99():
     expr3 = log(x)/log(2) + log(17*x + 17)
     opt3 = optimize(expr3, optims_c99)
     delta3 = opt3 - (log2(x) + log(17) + log1p(x))
-    assert delta3 == 0
-    assert (opt3.rewrite(log) - expr3).simplify() == 0
+    assert not delta3
+    assert not (opt3.rewrite(log) - expr3).simplify()
 
     expr4 = 2**x + 3*log(5*x + 7)/(13*log(2)) + 11*exp(x) - 11 + log(17*x + 17)
     opt4 = optimize(expr4, optims_c99).simplify()
     delta4 = opt4 - (exp2(x) + 3*log2(5*x + 7)/13 + 11*expm1(x) + log(17) + log1p(x))
-    assert delta4 == 0
-    assert (opt4.rewrite(exp).rewrite(log).rewrite(Pow) - expr4).simplify() == 0
+    assert not delta4
+    assert not (opt4.rewrite(exp).rewrite(log).rewrite(Pow) - expr4).simplify()
 
     expr5 = 3*exp(2*x) - 3
     opt5 = optimize(expr5, optims_c99)
     delta5 = opt5 - 3*expm1(2*x)
-    assert delta5 == 0
+    assert not delta5
     assert opt5.rewrite(exp) == expr5
 
     expr6 = exp(2*x) - 3
@@ -254,8 +250,8 @@ def test_optims_c99():
     expr7 = log(3*x + 3)
     opt7 = optimize(expr7, optims_c99)
     delta7 = opt7 - (log(3) + log1p(x))
-    assert delta7 == 0
-    assert (opt7.rewrite(log) - expr7).simplify() == 0
+    assert not delta7
+    assert not (opt7.rewrite(log) - expr7).simplify()
 
     expr8 = log(2*x + 3)
     opt8 = optimize(expr8, optims_c99)
@@ -263,9 +259,7 @@ def test_optims_c99():
 
 
 def test_create_expand_pow_optimization():
-    cc = lambda x: ccode(
-        optimize(x, [create_expand_pow_optimization(4)]))
-    x = Symbol('x')
+    cc , x  = lambda x: ccode(optimize(x, [create_expand_pow_optimization(4)])), Symbol('x')
     assert cc(x**4) == 'x*x*x*x'
     assert cc(x**4 + x**2) == 'x*x + x*x*x*x'
     assert cc(x**5 + x**4) == 'pow(x, 5) + x*x*x*x'
@@ -288,8 +282,7 @@ def test_create_expand_pow_optimization():
 
 def test_matsolve():
     n = Symbol('n', integer=True)
-    A = MatrixSymbol('A', n, n)
-    x = MatrixSymbol('x', n, 1)
+    A , x  = MatrixSymbol('A', n, n), MatrixSymbol('x', n, 1)
 
     with assuming(Q.fullrank(A)):
         assert optimize(A**(-1) * x, [matinv_opt]) == MatrixSolve(A, x)
@@ -300,8 +293,8 @@ def test_logaddexp_opt():
     x, y = map(Symbol, 'x y'.split())
     expr1 = log(exp(x) + exp(y))
     opt1 = optimize(expr1, [logaddexp_opt])
-    assert logaddexp(x, y) - opt1 == 0
-    assert logaddexp(y, x) - opt1 == 0
+    assert not logaddexp(x, y) - opt1
+    assert not logaddexp(y, x) - opt1
     assert opt1.rewrite(log) == expr1
 
 
@@ -309,8 +302,8 @@ def test_logaddexp2_opt():
     x, y = map(Symbol, 'x y'.split())
     expr1 = log(2**x + 2**y)/log(2)
     opt1 = optimize(expr1, [logaddexp2_opt])
-    assert logaddexp2(x, y) - opt1 == 0
-    assert logaddexp2(y, x) - opt1 == 0
+    assert not logaddexp2(x, y) - opt1
+    assert not logaddexp2(y, x) - opt1
     assert opt1.rewrite(log) == expr1
 
 
@@ -369,49 +362,25 @@ def test_compiled_ccode_with_rewriting():
     if not has_c():
         skip("No C compiler found.")
 
-    x = Symbol('x')
-    about_two = 2**(58/S(117))*3**(97/S(117))*5**(4/S(39))*7**(92/S(117))/S(30)*pi
+    x , about_two  = Symbol('x'), 2 ** (58 / S(117)) * 3 ** (97 / S(117)) * 5 ** (4 / S(39)) * 7 ** (92 / S(117)) / S(30) * pi
     # about_two: 1.999999999999581826
-    unchanged = 2*exp(x) - about_two
-    xval = S(10)**-11
-    ref = unchanged.subs(x, xval).n(19) # 2.0418173913673213e-11
+    unchanged , xval  = 2 * exp(x) - about_two, S(10) ** (-11)
+    ref , rewritten , NUMBER_OF_DIGITS  = unchanged.subs(x, xval).n(19), optimize(2 * exp(x) - about_two, [expm1_opt]), 25 # 2.0418173913673213e-11
 
-    rewritten = optimize(2*exp(x) - about_two, [expm1_opt])
 
     # Unfortunately, we need to call ``.n()`` on our expressions before we hand them
     # to ``ccode``, and we need to request a large number of significant digits.
     # In this test, results converged for double precision when the following number
     # of significant digits were chosen:
-    NUMBER_OF_DIGITS = 25   # TODO: this should ideally be automatically handled.
 
-    func_c = '''
-#include <math.h>
+    func_c , func_pyx  = '\n#include <math.h>\n\ndouble func_unchanged(double x) {\n    return %(unchanged)s;\n}\ndouble func_rewritten(double x) {\n    return %(rewritten)s;\n}\n' % dict(unchanged=ccode(unchanged.n(NUMBER_OF_DIGITS)), rewritten=ccode(rewritten.n(NUMBER_OF_DIGITS))), '\n#cython: language_level=3\ncdef extern double func_unchanged(double)\ncdef extern double func_rewritten(double)\ndef py_unchanged(x):\n    return func_unchanged(x)\ndef py_rewritten(x):\n    return func_rewritten(x)\n'
 
-double func_unchanged(double x) {
-    return %(unchanged)s;
-}
-double func_rewritten(double x) {
-    return %(rewritten)s;
-}
-''' % dict(unchanged=ccode(unchanged.n(NUMBER_OF_DIGITS)),
-           rewritten=ccode(rewritten.n(NUMBER_OF_DIGITS)))
-
-    func_pyx = '''
-#cython: language_level=3
-cdef extern double func_unchanged(double)
-cdef extern double func_rewritten(double)
-def py_unchanged(x):
-    return func_unchanged(x)
-def py_rewritten(x):
-    return func_rewritten(x)
-'''
     with tempfile.TemporaryDirectory() as folder:
         mod, info = compile_link_import_strings(
             [('func.c', func_c), ('_func.pyx', func_pyx)],
             build_dir=folder, compile_kwargs=dict(std='c99')
         )
-        err_rewritten = abs(mod.py_rewritten(1e-11) - ref)
-        err_unchanged = abs(mod.py_unchanged(1e-11) - ref)
+        err_rewritten , err_unchanged  = abs(mod.py_rewritten(1e-11) - ref), abs(mod.py_unchanged(1e-11) - ref)
         assert 1e-27 < err_rewritten < 1e-25  # highly accurate.
         assert 1e-19 < err_unchanged < 1e-16  # quite poor.
 

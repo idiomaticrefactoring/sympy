@@ -58,20 +58,16 @@ def newtons_method(expr, wrt, atol=1e-12, delta=None, debug=False,
     """
 
     if delta is None:
-        delta = Dummy()
-        Wrapper = Scope
-        name_d = 'delta'
+        delta , Wrapper , name_d  = Dummy(), Scope, 'delta'
     else:
-        Wrapper = lambda x: x
-        name_d = delta.name
+        Wrapper , name_d  = lambda x: x, delta.name
 
     delta_expr = -expr/expr.diff(wrt)
     whl_bdy = [Assignment(delta, delta_expr), AddAugmentedAssignment(wrt, delta)]
     if debug:
         prnt = Print([wrt, delta], r"{}=%12.5g {}=%12.5g\n".format(wrt.name, name_d))
         whl_bdy = [whl_bdy[0], prnt] + whl_bdy[1:]
-    req = Gt(Abs(delta), atol)
-    declars = [Declaration(Variable(delta, type=real, value=oo))]
+    req , declars  = Gt(Abs(delta), atol), [Declaration(Variable(delta, type=real, value=oo))]
     if itermax is not None:
         counter = counter or Dummy(integer=True)
         v_counter = Variable.deduced(counter, 0)
@@ -146,6 +142,5 @@ def newtons_method_function(expr, wrt, params=None, func_name="newton", attrs=Tu
     not_in_params = expr.free_symbols.difference({_symbol_of(p) for p in params})
     if not_in_params:
         raise ValueError("Missing symbols in params: %s" % ', '.join(map(str, not_in_params)))
-    declars = tuple(Variable(p, real) for p in params)
-    body = CodeBlock(algo, Return(wrt))
+    declars , body  = tuple((Variable(p, real) for p in params)), CodeBlock(algo, Return(wrt))
     return FunctionDefinition(real, func_name, declars, body, attrs=attrs)

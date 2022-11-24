@@ -79,8 +79,7 @@ def test_AugAssign():
             ('/', DivAugmentedAssignment),
             ('%', ModAugmentedAssignment),
         ]:
-        a = aug_assign(x, binop, y)
-        b = cls(x, y)
+        a , b  = aug_assign(x, binop, y), cls(x, y)
         assert a.func(*a.args) == a == b
         assert a.binop == binop
         assert a.op == binop + '='
@@ -104,20 +103,7 @@ def test_AugAssign():
 
 
 def test_Assignment_printing():
-    assignment_classes = [
-        Assignment,
-        AddAugmentedAssignment,
-        SubAugmentedAssignment,
-        MulAugmentedAssignment,
-        DivAugmentedAssignment,
-        ModAugmentedAssignment,
-    ]
-    pairs = [
-        (x, 2 * y + 2),
-        (B[i], x),
-        (A22, B22),
-        (A[0, 0], x),
-    ]
+    assignment_classes , pairs  = [Assignment, AddAugmentedAssignment, SubAugmentedAssignment, MulAugmentedAssignment, DivAugmentedAssignment, ModAugmentedAssignment], [(x, 2 * y + 2), (B[i], x), (A22, B22), (A[0, 0], x)]
 
     for cls in assignment_classes:
         for lhs, rhs in pairs:
@@ -140,14 +126,7 @@ def test_CodeBlock_topological_sort():
         Assignment(y, 2),
         ]
 
-    ordered_assignments = [
-        # Note that the unrelated z=1 and y=2 are kept in that order
-        Assignment(z, 1),
-        Assignment(y, 2),
-        Assignment(x, y + z),
-        Assignment(t, x),
-        ]
-    c1 = CodeBlock.topological_sort(assignments)
+    ordered_assignments , c1  = [Assignment(z, 1), Assignment(y, 2), Assignment(x, y + z), Assignment(t, x)], CodeBlock.topological_sort(assignments)
     assert c1 == CodeBlock(*ordered_assignments)
 
     # Cycle
@@ -168,14 +147,8 @@ def test_CodeBlock_topological_sort():
         Assignment(y, b + 3),
         ]
 
-    free_assignments_ordered = [
-        Assignment(z, a * b),
-        Assignment(y, b + 3),
-        Assignment(x, y + z),
-        Assignment(t, x),
-        ]
+    free_assignments_ordered , c2  = [Assignment(z, a * b), Assignment(y, b + 3), Assignment(x, y + z), Assignment(t, x)], CodeBlock.topological_sort(free_assignments)
 
-    c2 = CodeBlock.topological_sort(free_assignments)
     assert c2 == CodeBlock(*free_assignments_ordered)
 
 def test_CodeBlock_free_symbols():
@@ -185,7 +158,7 @@ def test_CodeBlock_free_symbols():
         Assignment(t, x),
         Assignment(y, 2),
         )
-    assert c1.free_symbols == set()
+    assert not c1.free_symbols
 
     c2 = CodeBlock(
         Assignment(x, y + z),
@@ -256,7 +229,7 @@ def test_none():
         pass
     foo = Foo()
     assert foo != none
-    assert none == None
+    assert not none
     assert none == NoneToken()
     assert none.func(*none.args) == none
 
@@ -299,8 +272,7 @@ def test_Type():
     assert repr(t) == "Type(String('MyType'))"
     assert Type(t) == t
     assert t.func(*t.args) == t
-    t1 = Type('t1')
-    t2 = Type('t2')
+    t1 , t2  = Type('t1'), Type('t2')
     assert t1 != t2
     assert t1 == t1 and t2 == t2
     t1b = Type('t1')
@@ -332,7 +304,7 @@ def test_Type__cast_check__integers():
     assert int8.cast_check(-128) == -128
     raises(ValueError, lambda: int8.cast_check(-129))
 
-    assert uint8.cast_check(0) == 0
+    assert not uint8.cast_check(0)
     assert uint8.cast_check(128) == 128
     raises(ValueError, lambda: uint8.cast_check(256.0))
     raises(ValueError, lambda: uint8.cast_check(-1))
@@ -340,8 +312,7 @@ def test_Type__cast_check__integers():
 def test_Attribute():
     noexcept = Attribute('noexcept')
     assert noexcept == Attribute('noexcept')
-    alignas16 = Attribute('alignas', [16])
-    alignas32 = Attribute('alignas', [32])
+    alignas16 , alignas32  = Attribute('alignas', [16]), Attribute('alignas', [32])
     assert alignas16 != alignas32
     assert alignas16.func(*alignas16.args) == alignas16
 
@@ -555,10 +526,8 @@ def test_While():
 
 
 def test_Scope():
-    assign = Assignment(x, y)
-    incr = AddAugmentedAssignment(x, 1)
-    scp = Scope([assign, incr])
-    cblk = CodeBlock(assign, incr)
+    assign , incr  = Assignment(x, y), AddAugmentedAssignment(x, 1)
+    scp , cblk  = Scope([assign, incr]), CodeBlock(assign, incr)
     assert scp.body == cblk
     assert scp == Scope(cblk)
     assert scp != Scope([incr, assign])
@@ -578,12 +547,11 @@ def test_Print():
     ps2 = Print([n, x])
     assert ps2 == Print([n, x])
     assert ps2 != ps
-    assert ps2.format_string == None
+    assert not ps2.format_string
 
 
 def test_FunctionPrototype_and_FunctionDefinition():
-    vx = Variable(x, type=real)
-    vn = Variable(n, type=integer)
+    vx , vn  = Variable(x, type=real), Variable(n, type=integer)
     fp1 = FunctionPrototype(real, 'power', [vx, vn])
     assert fp1.return_type == real
     assert fp1.name == String('power')
@@ -640,13 +608,10 @@ def test_FunctionCall():
     )
 
 def test_ast_replace():
-    x = Variable('x', real)
-    y = Variable('y', real)
-    n = Variable('n', integer)
+    x , y , n  = Variable('x', real), Variable('y', real), Variable('n', integer)
 
     pwer = FunctionDefinition(real, 'pwer', [x, n], [pow(x.symbol, n.symbol)])
-    pname = pwer.name
-    pcall = FunctionCall('pwer', [y, 3])
+    pname , pcall  = pwer.name, FunctionCall('pwer', [y, 3])
 
     tree1 = CodeBlock(pwer, pcall)
     assert str(tree1.args[0].name) == 'pwer'

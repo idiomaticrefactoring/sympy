@@ -53,8 +53,7 @@ class SumApprox(Optimization):
 
     def __init__(self, bounds, reltol, **kwargs):
         super().__init__(**kwargs)
-        self.bounds = bounds
-        self.reltol = reltol
+        self.bounds , self.reltol  = bounds, reltol
 
     def __call__(self, expr):
         return expr.factor().replace(self.query, lambda arg: self.value(arg))
@@ -84,17 +83,13 @@ class SumApprox(Optimization):
                 return add
 
         if all(term.is_number or term in self.bounds for term in add.args):
-            bounds = [(term, term) if term.is_number else self.bounds[term] for term in add.args]
-            largest_abs_guarantee = 0
+            bounds , largest_abs_guarantee  = [(term, term) if term.is_number else self.bounds[term] for term in add.args], 0
             for lo, hi in bounds:
                 if lo <= 0 <= hi:
                     continue
                 largest_abs_guarantee = max(largest_abs_guarantee,
                                             min(abs(lo), abs(hi)))
-            new_terms = []
-            for term, (lo, hi) in zip(add.args, bounds):
-                if max(abs(lo), abs(hi)) >= largest_abs_guarantee*self.reltol:
-                    new_terms.append(term)
+            new_terms = [term for (term, (lo, hi)) in zip(add.args, bounds) if max(abs(lo), abs(hi)) >= largest_abs_guarantee * self.reltol]
             return add.func(*new_terms)
         else:
             return add
@@ -140,9 +135,7 @@ class SeriesApprox(Optimization):
     """
     def __init__(self, bounds, reltol, max_order=4, n_point_checks=4, **kwargs):
         super().__init__(**kwargs)
-        self.bounds = bounds
-        self.reltol = reltol
-        self.max_order = max_order
+        self.bounds , self.reltol , self.max_order  = bounds, reltol, max_order
         if n_point_checks % 2 == 1:
             raise ValueError("Checking the solution at expansion point is not helpful")
         self.n_point_checks = n_point_checks
@@ -163,15 +156,12 @@ class SeriesApprox(Optimization):
         if symb not in self.bounds:
             return fexpr
         lo, hi = self.bounds[symb]
-        x0 = (lo + hi)/2
-        cheapest = None
+        x0 , cheapest  = (lo + hi) / 2, None
         for n in range(self.max_order+1, 0, -1):
-            fseri = fexpr.series(symb, x0=x0, n=n).removeO()
-            n_ok = True
+            fseri , n_ok  = fexpr.series(symb, x0=x0, n=n).removeO(), True
             for idx in range(self.n_point_checks):
                 x = lo + idx*(hi - lo)/(self.n_point_checks - 1)
-                val = fseri.xreplace({symb: x})
-                ref = fexpr.xreplace({symb: x})
+                val , ref  = fseri.xreplace({symb: x}), fexpr.xreplace({symb: x})
                 if abs((1 - val/ref).evalf(self._prec)) > self.reltol:
                     n_ok = False
                     break
