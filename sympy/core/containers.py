@@ -138,7 +138,7 @@ class Tuple(Basic):
         #
         # See: http://bugs.python.org/issue13340
 
-        if start is None and stop is None:
+        if start is None is stop:
             return self.args.index(value)
         elif stop is None:
             return self.args.index(value, start)
@@ -204,12 +204,7 @@ def tuple_wrapper(method):
 
     """
     def wrap_tuples(*args, **kw_args):
-        newargs = []
-        for arg in args:
-            if isinstance(arg, tuple):
-                newargs.append(Tuple(*arg))
-            else:
-                newargs.append(arg)
+        newargs = [Tuple(*arg) if isinstance(arg, tuple) else arg for arg in args]
         return method(*newargs, **kw_args)
     return wrap_tuples
 
@@ -259,10 +254,8 @@ class Dict(Basic):
             items = [Tuple(k, v) for k, v in args]
         else:
             raise TypeError('Pass Dict args as Dict((k1, v1), ...) or Dict({k1: v1, ...})')
-        elements = frozenset(items)
-        obj = Basic.__new__(cls, *ordered(items))
-        obj.elements = elements
-        obj._dict = dict(items)  # In case Tuple decides it wants to sympify
+        elements , obj  = frozenset(items), Basic.__new__(cls, *ordered(items))
+        obj.elements , obj._dict  = elements, dict(items)
         return obj
 
     def __getitem__(self, key):
